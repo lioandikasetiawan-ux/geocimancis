@@ -1,119 +1,134 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sistem Absensi Real-time - Geocimancis</title>
+    <title>Absensi Geocimancis</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #f0f2f5; }
-        .container { display: flex; gap: 20px; }
-        #map { height: 600px; flex: 2; border-radius: 12px; border: 2px solid #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .sidebar { flex: 1; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; }
-        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        .btn-absen { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; }
-        .btn-absen:hover { background: #0056b3; }
-        #status { font-size: 0.9em; margin-top: 10px; color: #666; }
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
+        #map { height: 500px; width: 100%; border-radius: 10px; margin-top: 20px; }
+        .form-box { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
+        .preview-area { margin: 10px 0; width: 100%; height: 240px; border: 2px dashed #ccc; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 8px; }
+        video, img { width: 100%; height: 100%; object-fit: cover; }
+        input, select, button { padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
+        .btn-main { background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .popup-container { text-align: center; min-width: 150px; }
+        .popup-container img { width: 100%; border-radius: 5px; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-    <h2 style="text-align: center;">📍 Monitoring Absensi Karyawan Cirebon</h2>
-
-    <div class="container">
-        <div class="sidebar">
-            <h3>Input Kehadiran</h3>
-            <div class="form-group">
-                <label>Nama Karyawan</label>
-                <input type="text" id="nama" placeholder="Contoh: Budi Santoso">
-            </div>
-            <div class="form-group">
-                <label>Wilayah Tugas</label>
-                <select id="wilayah">
-                    <option value="Cirebon Kota">Cirebon Kota</option>
-                    <option value="Sumber">Sumber</option>
-                    <option value="Palimanan">Palimanan</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Waktu & Tanggal</label>
-                <input type="text" id="waktu_info" disabled value="{{ date('Y-m-d H:i') }}">
-            </div>
-            <button class="btn-absen" onclick="ambilLokasi()">KIRIM ABSEN SEKARANG</button>
-            <div id="status">Menunggu perintah...</div>
+    <div class="form-box">
+        <h2>📍 Presensi Karyawan</h2>
+        <input type="text" id="nama" placeholder="Nama Lengkap">
+        <select id="wilayah">
+            <option value="Cirebon Kota">Cirebon Kota</option>
+            <option value="Sumber">Sumber</option>
+            <option value="Palimanan">Palimanan</option>
+        </select>
+        
+        <div style="display: flex; gap: 10px;">
+            <button onclick="startCamera()" style="background: #6c757d; color: white;">📷 Kamera</button>
+            <button onclick="document.getElementById('fileInput').click()" style="background: #6c757d; color: white;">📁 Galeri</button>
+            <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="previewFile()">
         </div>
 
-        <div id="map"></div>
+        <div class="preview-area">
+            <video id="video" autoplay playsinline style="display:none"></video>
+            <img id="preview-img" style="display:none">
+            <span id="txt-p">Belum ada foto</span>
+        </div>
+        
+        <button id="cap-btn" style="display:none; background:#007bff; color:white;" onclick="takeSnapshot()">Ambil Gambar</button>
+        <button class="btn-main" onclick="prosesAbsen()">SIMPAN ABSEN SEKARANG</button>
     </div>
 
+    <div id="map"></div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script>
-        // Inisialisasi Peta Cirebon
-        var map = L.map('map').setView([-6.722, 108.556], 12);
+        // Inisialisasi Peta
+        var map = L.map('map').setView([-6.722, 108.556], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
+        const video = document.getElementById('video');
+        const previewImg = document.getElementById('preview-img');
+        const capBtn = document.getElementById('cap-btn');
+        let currentFoto = null;
 
-        // 1. Load Data Sungai dari GeoServer (WFS)
-        var urlSungai = "http://localhost:8082/geoserver/geocimancis/ows?service=WFS&version=1.1.0&request=GetFeature&typeName=geocimancis:sungai_kota_cirebon&outputFormat=application/json";
-        fetch(urlSungai).then(res => res.json()).then(data => {
-            L.geoJSON(data, { style: { color: 'blue', weight: 2 } }).addTo(map);
-        });
-
-        // 2. Load Data Absen dari GeoServer agar muncul titik-titik karyawan
-        var urlAbsen = "http://localhost:8082/geoserver/geocimancis/ows?service=WFS&version=1.1.0&request=GetFeature&typeName=geocimancis:data_absens&outputFormat=application/json";
-        fetch(urlAbsen).then(res => res.json()).then(data => {
-            L.geoJSON(data, {
-                pointToLayer: (feature, latlng) => L.marker(latlng),
-                onEachFeature: (feature, layer) => {
-                    layer.bindPopup(`<b>${feature.properties.nama}</b><br>${feature.properties.waktu_absen}<br>Wilayah: ${feature.properties.wilayah_tugas}`);
-                }
-            }).addTo(map);
-        });
-
-        // 3. Logika Ambil Lokasi GPS & Kirim ke Controller
-        function ambilLokasi() {
-            const nama = document.getElementById('nama').value;
-            const wilayah = document.getElementById('wilayah').value;
-            const status = document.getElementById('status');
-
-            if (!nama) return alert("Nama tidak boleh kosong!");
-
-            status.innerHTML = "🛰️ Sedang mencari sinyal GPS...";
-
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-
-                    status.innerHTML = "📤 Mengirim data ke server...";
-
-                    // Kirim ke Controller AbsenController@simpan
-                    fetch('/simpan-absen', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        },
-                        body: JSON.stringify({ nama, wilayah, lat, lng })
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        alert(data.message);
-                        location.reload(); // Refresh untuk update titik di peta
-                    })
-                    .catch(err => {
-                        status.innerHTML = "❌ Gagal mengirim data.";
-                    });
-
-                }, function(error) {
-                    status.innerHTML = "❌ GPS Gagal: " + error.message;
-                });
-            } else {
-                status.innerHTML = "❌ Browser tidak mendukung GPS.";
-            }
+        // Fungsi Kamera
+        function startCamera() {
+            video.style.display = 'block'; previewImg.style.display = 'none'; capBtn.style.display = 'block';
+            document.getElementById('txt-p').style.display = 'none';
+            navigator.mediaDevices.getUserMedia({ video: true }).then(s => video.srcObject = s);
         }
+
+        function takeSnapshot() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 640; canvas.height = 480;
+            canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
+            currentFoto = canvas.toDataURL('image/jpeg');
+            previewImg.src = currentFoto; previewImg.style.display = 'block'; video.style.display = 'none';
+            capBtn.style.display = 'none';
+        }
+
+        function previewFile() {
+            const file = document.getElementById('fileInput').files[0];
+            const reader = new FileReader();
+            reader.onloadend = () => { 
+                currentFoto = reader.result; 
+                previewImg.src = currentFoto; 
+                previewImg.style.display = 'block'; 
+                video.style.display = 'none';
+                document.getElementById('txt-p').style.display = 'none';
+            };
+            if (file) reader.readAsDataURL(file);
+        }
+
+        // Simpan Absen
+        function prosesAbsen() {
+            if (!currentFoto || !document.getElementById('nama').value) return alert("Nama & Foto wajib!");
+            navigator.geolocation.getCurrentPosition(pos => {
+                fetch('/simpan-absen', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    body: JSON.stringify({
+                        nama: document.getElementById('nama').value,
+                        wilayah: document.getElementById('wilayah').value,
+                        foto: currentFoto,
+                        lat: pos.coords.latitude, lng: pos.coords.longitude
+                    })
+                }).then(() => {
+                    alert("Absen Berhasil!");
+                    location.reload();
+                });
+            }, () => alert("Gagal mengambil lokasi. Pastikan GPS aktif."));
+        }
+
+        // Tampilkan SEMUA titik absen dengan Fitur Cluster (Anti-Tumpuk)
+        var markerClusterGroup = L.markerClusterGroup();
+
+        fetch('/get-absensi').then(res => res.json()).then(data => {
+            data.forEach(d => {
+                if (d.lat && d.lng) {
+                    let popupContent = `
+                        <div class="popup-container">
+                            <b>${d.nama}</b><br>
+                            <small>${d.waktu_absen}</small><br>
+                            <img src="${d.foto}"><br>
+                            <small>Wilayah: ${d.wilayah_tugas}</small><br>
+                            <small>Koord: ${parseFloat(d.lat).toFixed(5)}, ${parseFloat(d.lng).toFixed(5)}</small>
+                        </div>
+                    `;
+                    let marker = L.marker([d.lat, d.lng]).bindPopup(popupContent);
+                    markerClusterGroup.addLayer(marker);
+                }
+            });
+            map.addLayer(markerClusterGroup);
+        });
     </script>
 </body>
 </html>

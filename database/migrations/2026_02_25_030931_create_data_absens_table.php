@@ -11,12 +11,14 @@ return new class extends Migration {
             $table->string('nama');
             $table->dateTime('waktu_absen');
             $table->string('wilayah_tugas');
-            $table->string('foto')->nullable(); // Simpan path gambar
+            
+            // PERUBAHAN DISINI: Gunakan 'text' untuk menampung data foto Base64 yang panjang
+            $table->text('foto')->nullable(); 
+            
             $table->timestamps();
         });
 
-        // Menambahkan kolom spasial 'geom' untuk titik (Point)
-        // Kita gunakan DB::statement karena Laravel Blueprint standar tidak selalu mendukung tipe geometri PostGIS secara native
+        // Menambahkan kolom spasial 'geom' untuk PostGIS
         DB::statement('ALTER TABLE data_absens ADD COLUMN geom GEOMETRY(Point, 4326)');
     }
 
