@@ -1,84 +1,129 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Peta Sungai & Presensi Cirebon</title>
+    <title>Sistem Informasi Geografis - Geocimancis</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
-    
     <style>
-        #map { height: 600px; width: 100%; border-radius: 8px; }
-        .popup-container { text-align: center; min-width: 160px; font-family: sans-serif; }
-        .popup-container img { width: 100%; border-radius: 5px; margin: 8px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .info-table { width: 100%; font-size: 11px; text-align: left; border-top: 1px solid #eee; margin-top: 5px; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; }
+        
+        /* Sidebar Styling */
+        #sidebar { width: 300px; background: #2c3e50; color: white; padding: 20px; box-shadow: 2px 0 5px rgba(0,0,0,0.2); z-index: 1000; overflow-y: auto; }
+        #sidebar h2 { font-size: 1.2rem; border-bottom: 1px solid #555; padding-bottom: 10px; margin-bottom: 20px; color: #ecf0f1; }
+        
+        /* Map Styling */
+        #map { flex-grow: 1; height: 100%; }
+
+        /* Menu Item Styling */
+        .menu-group { margin-bottom: 25px; }
+        .menu-title { font-weight: bold; margin-bottom: 10px; display: block; color: #3498db; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; }
+        .menu-item { background: #34495e; padding: 12px; border-radius: 6px; margin-bottom: 8px; cursor: pointer; transition: 0.3s; display: flex; align-items: center; }
+        .menu-item:hover { background: #3e5871; border-left: 4px solid #3498db; }
+        .menu-item input { margin-right: 12px; cursor: pointer; }
+        .menu-item label { cursor: pointer; flex-grow: 1; font-size: 0.9rem; }
+
+        /* Popup Styling */
+        .leaflet-popup-content-wrapper { border-radius: 8px; }
+        .popup-header { font-weight: bold; color: #2c3e50; border-bottom: 1px solid #ddd; margin-bottom: 5px; padding-bottom: 3px; }
     </style>
 </head>
 <body>
-    <h1>Peta Jaringan Sungai & Presensi Karyawan</h1>
+
+    <div id="sidebar">
+        <h2>🌐 GIS GEOCIMANCIS</h2>
+        
+        <div class="menu-group">
+            <span class="menu-title">Data Hidrologi</span>
+            <div class="menu-item">
+                <input type="checkbox" id="layerSungai" onchange="toggleLayer(this, 'sungai')">
+                <label for="layerSungai">Jaringan Sungai Kota</label>
+            </div>
+            <div class="menu-item">
+                <input type="checkbox" id="layerLain" disabled>
+                <label for="layerLain">Batas Administrasi (Segera)</label>
+            </div>
+        </div>
+
+        <div class="menu-group" style="margin-top: 50px;">
+            <span class="menu-title">Legenda</span>
+            <div style="font-size: 0.8rem; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px;">
+                <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                    <div style="width: 20px; height: 3px; background: blue; margin-right: 10px;"></div>
+                    <span>Aliran Sungai</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-    
     <script>
-    // Inisialisasi Peta
-    var map = L.map('map').setView([-6.722, 108.556], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap'
-    }).addTo(map);
+        // --- 1. INISIALISASI PETA ---
+        var map = L.map('map').setView([-6.722, 108.556], 13);
+        
+        // Basemap (OSM)
+        var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
 
-    // 1. LOAD DATA SUNGAI (WFS GeoServer)
-    var wfsUrl = "http://localhost:8082/geoserver/geocimancis/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=geocimancis:sungai_kota_cirebon&outputFormat=application/json";
-    
-    fetch(wfsUrl)
-        .then(res => res.json())
-        .then(data => {
-            L.geoJSON(data, {
-                style: { color: 'blue', weight: 3, opacity: 0.8 },
-                onEachFeature: function(feature, layer) {
-                    if (feature.properties && feature.properties.nama_sunga) {
-                        layer.bindPopup("Nama Sungai: " + feature.properties.nama_sunga);
-                    }
-                }
-            }).addTo(map);
-        });
+        // Objek untuk menampung layer spasial
+        var layers = {
+            sungai: null
+        };
 
-    // 2. LOAD DATA ABSENSI (PostgreSQL) dengan fitur Anti-Penumpukan
-    var markerClusterGroup = L.markerClusterGroup(); // Grup untuk marker yang menumpuk
-
-    function loadAbsensiMarkers() {
-        fetch('/get-absensi')
-            .then(response => response.json())
-            .then(data => {
-                data.forEach(absen => {
-                    if (absen.lat && absen.lng) {
-                        // Konten popup lengkap sesuai permintaan
-                        let popupContent = `
-                            <div class="popup-container">
-                                <h3 style="margin:0;">${absen.nama}</h3>
-                                <small style="color:gray;">${absen.waktu_absen}</small><br>
-                                <img src="${absen.foto || 'https://via.placeholder.com/150'}">
-                                <table class="info-table">
-                                    <tr><td><b>📍 Wilayah</b></td><td>: ${absen.wilayah_tugas}</td></tr>
-                                    <tr><td><b>🌐 Koordinat</b></td><td>: ${parseFloat(absen.lat).toFixed(5)}, ${parseFloat(absen.lng).toFixed(5)}</td></tr>
-                                </table>
-                            </div>
-                        `;
-
-                        // Buat marker dan tambahkan ke grup cluster
-                        let marker = L.marker([absen.lat, absen.lng]).bindPopup(popupContent);
-                        markerClusterGroup.addLayer(marker);
-                    }
+        // --- 2. FUNGSI LOAD DATA SPASIAL (WFS) ---
+        function loadSungai() {
+            var wfsUrl = "http://localhost:8082/geoserver/geocimancis/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=geocimancis:sungai_kota_cirebon&outputFormat=application/json";
+            
+            return fetch(wfsUrl)
+                .then(res => res.json())
+                .then(data => {
+                    layers.sungai = L.geoJSON(data, {
+                        style: {
+                            color: 'blue',
+                            weight: 3,
+                            opacity: 0.8
+                        },
+                        onEachFeature: function(feature, layer) {
+                            if (feature.properties && feature.properties.nama_sunga) {
+                                let content = `
+                                    <div class="popup-header">Detail Sungai</div>
+                                    <b>Nama:</b> ${feature.properties.nama_sunga}<br>
+                                    <b>Wilayah:</b> Kota Cirebon
+                                `;
+                                layer.bindPopup(content);
+                            }
+                        }
+                    });
+                    return layers.sungai;
+                })
+                .catch(err => {
+                    console.error("Gagal mengambil data GeoServer:", err);
+                    alert("Koneksi ke GeoServer gagal. Pastikan GeoServer aktif.");
                 });
-                
-                // Tambahkan semua marker ke peta melalui grup cluster
-                map.addLayer(markerClusterGroup);
-            })
-            .catch(err => console.error('Gagal memuat data absen:', err));
-    }
+        }
 
-    // Jalankan fungsi
-    loadAbsensiMarkers();
+        // --- 3. KONTROL LAYER DARI SIDEBAR ---
+        function toggleLayer(checkbox, layerKey) {
+            if (checkbox.checked) {
+                // Jika data belum pernah di-load, load dulu
+                if (!layers[layerKey]) {
+                    loadSungai().then(layer => {
+                        if (layer) {
+                            layer.addTo(map);
+                            map.fitBounds(layer.getBounds());
+                        }
+                    });
+                } else {
+                    layers[layerKey].addTo(map);
+                }
+            } else {
+                // Jika checkbox tidak dicentang, hapus dari peta
+                if (layers[layerKey]) {
+                    map.removeLayer(layers[layerKey]);
+                }
+            }
+        }
     </script>
 </body>
 </html>
