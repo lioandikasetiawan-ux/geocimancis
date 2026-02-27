@@ -5,52 +5,26 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; }
-        
-        /* Sidebar Styling */
-        #sidebar { width: 300px; background: #2c3e50; color: white; padding: 20px; box-shadow: 2px 0 5px rgba(0,0,0,0.2); z-index: 1000; overflow-y: auto; }
-        #sidebar h2 { font-size: 1.2rem; border-bottom: 1px solid #555; padding-bottom: 10px; margin-bottom: 20px; color: #ecf0f1; }
-        
-        /* Map Styling */
+        #sidebar { width: 320px; background: #2c3e50; color: white; padding: 20px; box-shadow: 2px 0 5px rgba(0,0,0,0.2); z-index: 1000; overflow-y: auto; }
+        #sidebar h2 { font-size: 1.2rem; border-bottom: 1px solid #555; padding-bottom: 10px; margin-bottom: 20px; color: #ecf0f1; text-align: center; }
         #map { flex-grow: 1; height: 100%; }
-
-        /* Menu Item Styling */
-        .menu-group { margin-bottom: 25px; }
-        .menu-title { font-weight: bold; margin-bottom: 10px; display: block; color: #3498db; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; }
-        .menu-item { background: #34495e; padding: 12px; border-radius: 6px; margin-bottom: 8px; cursor: pointer; transition: 0.3s; display: flex; align-items: center; }
-        .menu-item:hover { background: #3e5871; border-left: 4px solid #3498db; }
-        .menu-item input { margin-right: 12px; cursor: pointer; }
-        .menu-item label { cursor: pointer; flex-grow: 1; font-size: 0.9rem; }
-
-        /* Popup Styling */
-        .leaflet-popup-content-wrapper { border-radius: 8px; }
-        .popup-header { font-weight: bold; color: #2c3e50; border-bottom: 1px solid #ddd; margin-bottom: 5px; padding-bottom: 3px; }
+        .menu-group { margin-bottom: 20px; }
+        .menu-title { font-weight: bold; margin-bottom: 10px; display: block; color: #3498db; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; border-left: 3px solid #3498db; padding-left: 8px; }
+        .menu-item { background: #34495e; padding: 10px; border-radius: 6px; margin-bottom: 5px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; }
+        .menu-item:hover { background: #3e5871; }
+        .menu-item input { margin-right: 10px; cursor: pointer; transform: scale(1.2); }
+        .menu-item label { cursor: pointer; flex-grow: 1; font-size: 0.85rem; }
+        .popup-table { font-size: 11px; border-collapse: collapse; width: 100%; }
+        .popup-table td { border: 1px solid #ddd; padding: 4px; }
+        .popup-header { font-weight: bold; background: #3498db; color: white; padding: 5px; border-radius: 4px 4px 0 0; text-align: center; margin-bottom: 5px; }
     </style>
 </head>
 <body>
 
     <div id="sidebar">
         <h2>🌐 GIS GEOCIMANCIS</h2>
-        
-        <div class="menu-group">
-            <span class="menu-title">Data Hidrologi</span>
-            <div class="menu-item">
-                <input type="checkbox" id="layerSungai" onchange="toggleLayer(this, 'sungai')">
-                <label for="layerSungai">Jaringan Sungai Kota</label>
-            </div>
-            <div class="menu-item">
-                <input type="checkbox" id="layerLain" disabled>
-                <label for="layerLain">Batas Administrasi (Segera)</label>
-            </div>
-        </div>
-
-        <div class="menu-group" style="margin-top: 50px;">
-            <span class="menu-title">Legenda</span>
-            <div style="font-size: 0.8rem; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px;">
-                <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                    <div style="width: 20px; height: 3px; background: blue; margin-right: 10px;"></div>
-                    <span>Aliran Sungai</span>
-                </div>
-            </div>
+        <div id="dynamic-menu">
+            <p style="font-size: 0.8rem; text-align: center; color: #bdc3c7;">Memuat daftar data...</p>
         </div>
     </div>
 
@@ -58,72 +32,102 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // --- 1. INISIALISASI PETA ---
-        var map = L.map('map').setView([-6.722, 108.556], 13);
-        
-        // Basemap (OSM)
-        var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+        var map = L.map('map').setView([-6.722, 108.556], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
 
-        // Objek untuk menampung layer spasial
-        var layers = {
-            sungai: null
-        };
+        var activeLayers = {};
 
-        // --- 2. FUNGSI LOAD DATA SPASIAL (WFS) ---
-        function loadSungai() {
-            var wfsUrl = "http://localhost:8082/geoserver/geocimancis/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=geocimancis:sungai_kota_cirebon&outputFormat=application/json";
-            
-            return fetch(wfsUrl)
-                .then(res => res.json())
+        // --- 1. FUNGSI AMBIL DAFTAR LAYER DARI GEOSERVER ---
+        function loadSidebarLayers() {
+            const capabilitiesUrl = "http://localhost:8082/geoserver/geocimancis/ows?service=WFS&version=1.1.0&request=GetCapabilities";
+
+            fetch(capabilitiesUrl)
+                .then(res => res.text())
+                .then(str => new window.DOMParser().parseFromString(str, "text/xml"))
                 .then(data => {
-                    layers.sungai = L.geoJSON(data, {
-                        style: {
-                            color: 'blue',
-                            weight: 3,
-                            opacity: 0.8
-                        },
-                        onEachFeature: function(feature, layer) {
-                            if (feature.properties && feature.properties.nama_sunga) {
-                                let content = `
-                                    <div class="popup-header">Detail Sungai</div>
-                                    <b>Nama:</b> ${feature.properties.nama_sunga}<br>
-                                    <b>Wilayah:</b> Kota Cirebon
-                                `;
-                                layer.bindPopup(content);
-                            }
-                        }
+                    const layers = data.getElementsByTagName("FeatureType");
+                    const menuContainer = document.getElementById('dynamic-menu');
+                    menuContainer.innerHTML = ''; // Kosongkan loading text
+
+                    // Objek untuk grouping berdasarkan nama depan (misal: di_cikeusik)
+                    let groups = {};
+
+                    Array.from(layers).forEach(layer => {
+                        const fullName = layer.getElementsByTagName("Name")[0].textContent.replace('geocimancis:', '');
+                        const title = layer.getElementsByTagName("Title")[0].textContent;
+                        
+                        // Logika grouping: ambil kata pertama dan kedua (contoh: di_cikeusik)
+                        const parts = fullName.split('_');
+                        const groupKey = parts.length > 1 ? parts[0] + "_" + parts[1] : "Lainnya";
+                        
+                        if (!groups[groupKey]) groups[groupKey] = [];
+                        groups[groupKey].push({ name: fullName, title: title });
                     });
-                    return layers.sungai;
+
+                    // Buat elemen HTML untuk setiap grup
+                    for (let group in groups) {
+                        let groupDiv = document.createElement('div');
+                        groupDiv.className = 'menu-group';
+                        groupDiv.innerHTML = `<span class="menu-title">${group.toUpperCase().replace('_', ' ')}</span>`;
+
+                        groups[group].forEach(item => {
+                            // Tentukan warna otomatis berdasarkan tipe (baku=hijau, bangunan=merah, lainnya=biru)
+                            let color = '#3498db';
+                            if (item.name.includes('baku')) color = '#2ecc71';
+                            if (item.name.includes('bangunan')) color = '#e74c3c';
+                            if (item.name.includes('fungsional')) color = '#f1c40f';
+
+                            let itemDiv = document.createElement('div');
+                            itemDiv.className = 'menu-item';
+                            itemDiv.innerHTML = `
+                                <input type="checkbox" onchange="toggleWFS(this, '${item.name}', '${color}')">
+                                <label>${item.title}</label>
+                            `;
+                            groupDiv.appendChild(itemDiv);
+                        });
+                        menuContainer.appendChild(groupDiv);
+                    }
                 })
                 .catch(err => {
-                    console.error("Gagal mengambil data GeoServer:", err);
-                    alert("Koneksi ke GeoServer gagal. Pastikan GeoServer aktif.");
+                    console.error("Gagal load daftar layer:", err);
+                    document.getElementById('dynamic-menu').innerHTML = '<p style="color:red">Gagal memuat data. Cek GeoServer.</p>';
                 });
         }
 
-        // --- 3. KONTROL LAYER DARI SIDEBAR ---
-        function toggleLayer(checkbox, layerKey) {
-            if (checkbox.checked) {
-                // Jika data belum pernah di-load, load dulu
-                if (!layers[layerKey]) {
-                    loadSungai().then(layer => {
-                        if (layer) {
-                            layer.addTo(map);
-                            map.fitBounds(layer.getBounds());
-                        }
-                    });
-                } else {
-                    layers[layerKey].addTo(map);
+        // Jalankan fungsi saat halaman dibuka
+        loadSidebarLayers();
+
+     // --- 2. FUNGSI TOGGLE WFS (DIPERBARUI) ---
+function toggleWFS(checkbox, layerName, color) {
+    if (checkbox.checked) {
+        var url = "http://localhost:8082/geoserver/geocimancis/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=geocimancis:" + layerName + "&outputFormat=application/json";
+        
+        fetch(url).then(res => res.json()).then(data => {
+            activeLayers[layerName] = L.geoJSON(data, {
+                style: { color: color, fillColor: color, weight: 2, fillOpacity: 0.5 },
+                pointToLayer: (feature, latlng) => L.circleMarker(latlng, { radius: 6, fillColor: color, color: "#000", weight: 1, fillOpacity: 0.8 }),
+                onEachFeature: (feature, layer) => {
+                    let tableRows = "";
+                    for (let key in feature.properties) {
+                        tableRows += `<tr><td><b>${key}</b></td><td>${feature.properties[key]}</td></tr>`;
+                    }
+                    layer.bindPopup(`<div class="popup-header">Info ${layerName}</div><table class="popup-table">${tableRows}</table>`);
                 }
-            } else {
-                // Jika checkbox tidak dicentang, hapus dari peta
-                if (layers[layerKey]) {
-                    map.removeLayer(layers[layerKey]);
-                }
-            }
+            }).addTo(map);
+
+            // MODIFIKASI DISINI: Batasi zoom maksimal agar tidak terlalu dekat
+            map.fitBounds(activeLayers[layerName].getBounds(), {
+                padding: [50, 50], // Memberi ruang di tepi layar
+                maxZoom: 12        // Angka ini mengatur kejauhan. Coba 12 atau 13 jika 14 masih terlalu dekat.
+            });
+        });
+    } else {
+        if (activeLayers[layerName]) {
+            map.removeLayer(activeLayers[layerName]);
+            delete activeLayers[layerName];
         }
+    }
+}
     </script>
 </body>
 </html>
