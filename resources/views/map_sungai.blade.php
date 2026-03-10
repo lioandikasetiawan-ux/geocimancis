@@ -429,6 +429,7 @@
     map.on('locationfound', onLocationFound);
     map.locate({setView: false, watch: true, enableHighAccuracy: true}); 
     loadSidebarLayers();
+    
 </script>
 </body>
 </html>
