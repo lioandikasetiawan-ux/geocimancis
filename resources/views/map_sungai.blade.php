@@ -388,7 +388,7 @@
                     if (mhItems.length > 0) {
                         let mhSubDiv = document.createElement('div');
                         mhSubDiv.className = 'sub-bab-container';
-                        mhSubDiv.innerHTML = `<button class="sub-bab-title" onclick="toggleMenu(this)">Musim Hujan <span class="arrow">&#9660;</span></button><div class="sub-bab-content"></div>`;
+                        mhSubDiv.innerHTML = `<button class="sub-bab-title" onclick="toggleMenu(this)">Lokasi Kejadian Banjir <span class="arrow">&#9660;</span></button><div class="sub-bab-content"></div>`;
                         const mhSubContent = mhSubDiv.querySelector('.sub-bab-content');
                         mhItems.forEach(item => {
                             let itemDiv = document.createElement('div');
@@ -429,7 +429,6 @@
     map.on('locationfound', onLocationFound);
     map.locate({setView: false, watch: true, enableHighAccuracy: true}); 
     loadSidebarLayers();
-    
 </script>
 </body>
 </html>
