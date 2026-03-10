@@ -47,12 +47,13 @@
         .popup-table tr:nth-child(even) { background-color: #f9f9f9; }
         .custom-pin { display: flex; justify-content: center; align-items: center; }
 
-        /* Style marker lokasi user */
-        .user-location-marker {
-            background: #2196F3;
+        .user-location-dot {
+            width: 12px;
+            height: 12px;
+            background-color: #007bff;
             border: 2px solid white;
             border-radius: 50%;
-            box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.4);
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
         }
     </style>
 </head>
@@ -132,6 +133,7 @@
         'kerawanan rendah': '#FFBEBE', 
         'kerawanan sedang': '#FF7F7F', 
         'kerawanan tinggi': '#A80000',
+        'lokasi kritis': '#800000', // Diperbarui menjadi Maroon
         'batuan lempung bermasalah': '#7CB342',
         'dataran aluvial': '#3BA0BC', 
         'dataran kaki vulkan': '#B7FF93', 
@@ -171,6 +173,12 @@
         let lower = text.toLowerCase();
         if (lower === 'das_cimanggis_ar') return "Batas 25 Das Cimanuk Cisanggarung";
         if (lower.includes('sungai_orde_ln')) return "Jaringan Sungai";
+        if (lower.includes('banjir')) return "Rawan Banjir";
+        if (lower.includes('kekeringan')) return "Rawan Kekeringan";
+        if (lower.includes('lokasi_kritis')) return "Lokasi Kritis";
+        if (lower === 'aquifer_cimancis_ar') return "Aquifer";
+        if (lower === 'geologi_regional_250k') return "Geologi Regional";
+        if (lower === 'geomorfologi_cimancis') return "Geomorfologi";
         return text.replace(/di_/gi, '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
 
@@ -243,7 +251,12 @@
         let lWeight = 1;
         let lowerLayer = layerName.toLowerCase();
 
-        if (lowerLayer.includes('baku')) { color = classificationColors['baku']; fOpacity = 0.3; }
+        // Logika khusus untuk pewarnaan Lokasi Kritis
+        if (lowerLayer.includes('lokasi_kritis')) { 
+            color = '#800000'; // Maroon
+            fOpacity = 0.7; 
+        } 
+        else if (lowerLayer.includes('baku')) { color = classificationColors['baku']; fOpacity = 0.3; }
         else if (lowerLayer.includes('fungsional')) { color = classificationColors['fungsional']; fOpacity = 0.3; }
         else if (lowerLayer.includes('potensial')) { color = classificationColors['potensial']; fOpacity = 0.5; }
         else if (lowerLayer.includes('jaringan')) { color = classificationColors['jaringan']; fOpacity = 0.7; }
@@ -254,8 +267,10 @@
                 if (classificationColors[val]) { color = classificationColors[val]; break; }
             }
         }
+
         if (lowerLayer === 'das_cimanggis_ar') { color = "#FF7F7F"; fOpacity = 0; lWeight = 3; }
         else if (lowerLayer.includes('sungai')) { color = "#3498db"; lWeight = 2; }
+        
         return { color: color, weight: lWeight, fillOpacity: fOpacity, opacity: 1, fillColor: color };
     }
 
@@ -267,6 +282,7 @@
                 let iconPath = getLayerIconPath(layerName);
                 if (iconPath) { info.type = 'icon'; info.icon = iconPath; } 
                 else {
+                    // Ambil gaya dari feature pertama untuk legenda
                     let style = getFeatureStyle(data.features[0], layerName);
                     info.type = 'single'; info.color = style.color;
                     let classes = {};
@@ -321,7 +337,7 @@
                 if (lowerName.includes('bendung') || lowerName.includes('embung') || lowerName.includes('pengendali') || lowerName.includes('pengaman') || lowerName.includes('mata') || lowerName.includes('situ')) category = "Infrastruktur";
                 else if (lowerName.startsWith('di_')) category = "Daerah Irigasi Pusat";
                 else if (lowerName.includes('sungai') || lowerName.includes('das')) category = "DAS dan Jaringan Sungai";
-                else if (lowerName.includes('banjir') || lowerName.includes('kekeringan') || lowerName.includes('gerakan')) category = "Kebencanaan";
+                else if (lowerName.includes('banjir') || lowerName.includes('kekeringan') || lowerName.includes('mh') || lowerName.includes('kritis') || lowerName.includes('gerakan')) category = "Kebencanaan";
                 catalog[category].push({ name: fullName });
             });
             for (let catName in catalog) {
@@ -331,6 +347,7 @@
                 let isOpen = (catName === "DAS dan Jaringan Sungai") ? "active" : "";
                 groupDiv.innerHTML = `<button class="menu-title" onclick="toggleMenu(this)">${catName} <span class="arrow">&#9660;</span></button><div class="menu-content ${isOpen}"></div>`;
                 const contentDiv = groupDiv.querySelector('.menu-content');
+
                 if (catName === "Daerah Irigasi Pusat") {
                     let subGroups = {};
                     catalog[catName].forEach(item => {
@@ -352,7 +369,37 @@
                         });
                         contentDiv.appendChild(subDiv);
                     }
-                } else {
+                } 
+                else if (catName === "Kebencanaan") {
+                    let mhItems = [];
+                    let otherItems = [];
+                    catalog[catName].forEach(item => {
+                        if (item.name.toLowerCase().includes('mh')) mhItems.push(item);
+                        else otherItems.push(item);
+                    });
+
+                    otherItems.forEach(item => {
+                        let itemDiv = document.createElement('div');
+                        itemDiv.className = 'menu-item';
+                        itemDiv.innerHTML = `<label><input type="checkbox" onchange="toggleWFS(this, '${item.name}', '${catName}')">${getLayerIcon(item.name)}<span>${formatTitle(item.name)}</span></label>`;
+                        contentDiv.appendChild(itemDiv);
+                    });
+
+                    if (mhItems.length > 0) {
+                        let mhSubDiv = document.createElement('div');
+                        mhSubDiv.className = 'sub-bab-container';
+                        mhSubDiv.innerHTML = `<button class="sub-bab-title" onclick="toggleMenu(this)">Musim Hujan <span class="arrow">&#9660;</span></button><div class="sub-bab-content"></div>`;
+                        const mhSubContent = mhSubDiv.querySelector('.sub-bab-content');
+                        mhItems.forEach(item => {
+                            let itemDiv = document.createElement('div');
+                            itemDiv.className = 'menu-item';
+                            itemDiv.innerHTML = `<label><input type="checkbox" onchange="toggleWFS(this, '${item.name}', '${catName}', 'Musim Hujan')">${getLayerIcon(item.name)}<span>${formatTitle(item.name)}</span></label>`;
+                            mhSubContent.appendChild(itemDiv);
+                        });
+                        contentDiv.appendChild(mhSubDiv);
+                    }
+                } 
+                else {
                     catalog[catName].forEach(item => {
                         let itemDiv = document.createElement('div');
                         itemDiv.className = 'menu-item';
@@ -367,41 +414,20 @@
         });
     }
 
-    // --- FITUR LOKASI SAYA (GEOLOCATION) ---
-    var userMarker, userCircle;
-
+    var userMarker, userAccuracy;
     function onLocationFound(e) {
         var radius = e.accuracy / 2;
         if (!userMarker) {
-            userMarker = L.marker(e.latlng, {
-                icon: L.divIcon({
-                    className: 'user-location-marker',
-                    iconSize: [12, 12]
-                })
-            }).addTo(map).bindPopup("Lokasi Anda saat ini");
-            userCircle = L.circle(e.latlng, radius, {
-                color: '#2196F3',
-                fillColor: '#2196F3',
-                fillOpacity: 0.15,
-                weight: 1
-            }).addTo(map);
+            userMarker = L.marker(e.latlng).addTo(map).bindPopup("Anda berada di sini");
+            userAccuracy = L.circle(e.latlng, radius).addTo(map);
         } else {
             userMarker.setLatLng(e.latlng);
-            userCircle.setLatLng(e.latlng);
-            userCircle.setRadius(radius);
+            userAccuracy.setLatLng(e.latlng);
+            userAccuracy.setRadius(radius);
         }
     }
-
-    function onLocationError(e) {
-        console.warn("Gagal mendapatkan lokasi: " + e.message);
-    }
-
     map.on('locationfound', onLocationFound);
-    map.on('locationerror', onLocationError);
-
-    // Memulai tracking lokasi
-    map.locate({setView: false, watch: true, enableHighAccuracy: true});
-
+    map.locate({setView: false, watch: true, enableHighAccuracy: true}); 
     loadSidebarLayers();
 </script>
 </body>
