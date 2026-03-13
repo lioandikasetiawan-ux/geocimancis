@@ -99,7 +99,7 @@
         'baku': '#006400',      
         'fungsional': '#7CFC00',
         'potensial': '#32CD32',  
-        'jaringan': '#FFFF00',  
+         
         'bangunan': '#754c4c',
         'hutan lindung': '#228B22',
         'hutan produksi': '#90EE90',
@@ -111,6 +111,11 @@
         'rendah': '#AAFF00', 
         'menengah': '#FFFF00', 
         'tinggi': '#FF0000',
+        'landai': '#eedbae',
+        'datar': '#f1a12f',
+        'agak curam': '#fc8c8c',
+        'curam': '#ff1c1c',
+        'sangat curam': '#b70101',
         'aquifer produktif dengan penyebaran luas': '#E6A1CD', 
         'daerah air tanah langka': '#7193AE', 
         'setempat aquifer produktif': '#9A73DE', 
@@ -133,7 +138,7 @@
         'kerawanan rendah': '#FFBEBE', 
         'kerawanan sedang': '#FF7F7F', 
         'kerawanan tinggi': '#A80000',
-        'lokasi kritis': '#800000', // Diperbarui menjadi Maroon
+        'lokasi kritis': '#800000', 
         'batuan lempung bermasalah': '#7CB342',
         'dataran aluvial': '#3BA0BC', 
         'dataran kaki vulkan': '#B7FF93', 
@@ -148,7 +153,21 @@
         'pegunungan denudasional lereng sangat curam': '#BB913B', 
         'pegunungan struktural lereng curam': '#FF3BD1', 
         'pegunungan struktural lereng sangat curam': '#933B75', 
-        'perbukitan denudasional': '#EDB03B'
+        'perbukitan denudasional': '#EDB03B',
+        'aset_tanah_brebes': '#26ec0c',
+        'aset_tanah_cirebon': '#ec9e0c',
+        'aset_tanah_cirebon_kota': '#00FFFF',
+        'aset_tanah_indramayu': '#FF00FF',
+        'aset_tanah_majalengka': '#FFA500',
+        'aset_tanah_sumedang': '#800080',
+        // Warna Saluran
+        'saluran induk': '#000000',
+        'saluran primer': '#ff0000', 
+        'saluran sekunder': '#ffea00',
+        'saluran tersier': '#0015f8', 
+        'saluran terrsier': '#0015f8', 
+        'saluran pembuang': '#93f2f2',
+        'saluran suplesi': '#ea6500',
     };
 
     const iconMapping = {
@@ -246,22 +265,58 @@
     }
 
     function getFeatureStyle(feature, layerName) {
-        let color = "#3388ff"; 
+        let color = "#65f176"; 
         let fOpacity = 0.6;
-        let lWeight = 1;
+        let lWeight = 1.5;
         let lowerLayer = layerName.toLowerCase();
 
-        // Logika khusus untuk pewarnaan Lokasi Kritis
-        if (lowerLayer.includes('lokasi_kritis')) { 
-            color = '#800000'; // Maroon
-            fOpacity = 0.7; 
+        if (lowerLayer.includes('jaringan')) {
+            lWeight = 3;
+            let props = feature.properties || {};
+            
+            // Urutan Seleksi: 1. Saluran -> 2. N Aset -> 3. Nama
+            let selectedVal = props.saluran || props.Saluran || props.SALURAN || 
+                              props.n_aset || props.N_Aset || props.N_ASET ||
+                              props.nama || props.Nama || props.NAMA;
+            
+            if (selectedVal) {
+                let val = String(selectedVal).toLowerCase().trim();
+                if (val.includes('induk')) {
+                    color = classificationColors['saluran induk'];
+                    lWeight = 4.5;
+                } else if (val.includes('primer')) {
+                    color = classificationColors['saluran primer'];
+                    lWeight = 3.5;
+                } else if (val.includes('sekunder')) {
+                    color = classificationColors['saluran sekunder'];
+                    lWeight = 2.5;
+                } else if (val.includes('tersier')) {
+                    color = classificationColors['saluran tersier'];
+                    lWeight = 1.5;
+                } else if (val.includes('terrsier')) {
+                    color = classificationColors['saluran tersier'];
+                    lWeight = 1.5;
+                }else if (val.includes('pembuang')) {
+                    color = classificationColors['saluran pembuang'];
+                }else if (val.includes('suplesi')) {
+                    color = classificationColors['saluran suplesi'];
+                } else {
+                    color = "#ee1bce"; // Warna default jika tidak ada kategori cocok
+                }
+            }
+        }
+        
+        // Cek klasifikasi warna umum jika layer memiliki warna spesifik di objek classificationColors
+        if (classificationColors[lowerLayer]) {
+            color = classificationColors[lowerLayer];
         } 
+        else if (lowerLayer.includes('lokasi_kritis')) { color = '#800000'; fOpacity = 0.7; } 
         else if (lowerLayer.includes('baku')) { color = classificationColors['baku']; fOpacity = 0.3; }
         else if (lowerLayer.includes('fungsional')) { color = classificationColors['fungsional']; fOpacity = 0.3; }
         else if (lowerLayer.includes('potensial')) { color = classificationColors['potensial']; fOpacity = 0.5; }
-        else if (lowerLayer.includes('jaringan')) { color = classificationColors['jaringan']; fOpacity = 0.7; }
         else if (lowerLayer.includes('bangunan')) { color = classificationColors['bangunan']; }
         else {
+            // Pengecekan sisa atribut untuk klasifikasi warna lainnya
             for (let prop in feature.properties) {
                 let val = String(feature.properties[prop]).toLowerCase().replace(/,/g, '').replace(/\s+/g, ' ').replace(/\(.*\)/g, '').trim();
                 if (classificationColors[val]) { color = classificationColors[val]; break; }
@@ -277,42 +332,68 @@
     function toggleWFS(checkbox, layerName, category, subCategory = null) {
         if (checkbox.checked) {
             var url = "http://103.144.231.38:8082/geoserver/geocimancis/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=geocimancis:" + layerName + "&outputFormat=application/json&srsName=EPSG:4326";
+            
             fetch(url).then(res => res.json()).then(data => {
+                if (!data.features || data.features.length === 0) return;
+
                 let info = { category: category, subCategory: subCategory };
                 let iconPath = getLayerIconPath(layerName);
                 if (iconPath) { info.type = 'icon'; info.icon = iconPath; } 
                 else {
-                    // Ambil gaya dari feature pertama untuk legenda
-                    let style = getFeatureStyle(data.features[0], layerName);
+                    let firstFeature = data.features[0];
+                    let style = getFeatureStyle(firstFeature || {}, layerName);
                     info.type = 'single'; info.color = style.color;
                     let classes = {};
                     data.features.forEach(f => {
                         for (let prop in f.properties) {
                             let rawVal = String(f.properties[prop]);
                             let cleanVal = rawVal.toLowerCase().replace(/,/g, '').replace(/\s+/g, ' ').replace(/\(.*\)/g, '').trim();
-                            if (classificationColors[cleanVal]) { classes[cleanVal] = { color: classificationColors[cleanVal], label: rawVal }; }
+                            
+                            if (cleanVal.includes('induk')) {
+                                classes['saluran induk'] = { color: classificationColors['saluran induk'], label: 'Saluran Induk' };
+                            } else if (cleanVal.includes('primer')) {
+                                classes['saluran primer'] = { color: classificationColors['saluran primer'], label: 'Saluran Primer' };
+                            } else if (cleanVal.includes('sekunder')) {
+                                classes['saluran sekunder'] = { color: classificationColors['saluran sekunder'], label: 'Saluran Sekunder' };
+                            } else if (cleanVal.includes('tersier')) {
+                                classes['saluran tersier'] = { color: classificationColors['saluran tersier'], label: 'Saluran Tersier' };
+                            } else if (classificationColors[cleanVal]) { 
+                                classes[cleanVal] = { color: classificationColors[cleanVal], label: rawVal }; 
+                            }
                         }
                     });
                     if (Object.keys(classes).length > 1) { info.type = 'classified'; info.classes = Object.values(classes); }
                 }
+
                 layerInfoForLegend[layerName] = info;
-                var geoJsonLayer = L.geoJSON(data, {
+                var geoJsonLayer = L.geoJson(data, {
                     style: (feature) => getFeatureStyle(feature, layerName),
                     pointToLayer: (feature, latlng) => L.marker(latlng, { icon: createMarkerIcon(getFeatureStyle(feature, layerName).color, layerName) }),
                     onEachFeature: (feature, layer) => {
-                        let rows = "";
-                        for (let key in feature.properties) { 
-                            if (key.toLowerCase().includes('id')) continue;
-                            rows += `<tr><td style="width:100px"><b>${formatTitle(key)}</b></td><td>${feature.properties[key] || "-"}</td></tr>`; 
+                        let props = feature.properties;
+                        let displayTitle = props.Nama || props.nama || props.N_Aset || props.n_aset;
+                        if (!displayTitle || displayTitle === "-" || displayTitle === "0") {
+                            displayTitle = props.saluran || props.Saluran || formatTitle(layerName);
                         }
-                        layer.bindPopup(`<div class="popup-header">${formatTitle(layerName)}</div><div class="popup-scroll"><table class="popup-table">${rows}</table></div>`);
+                        let rows = "";
+                        for (let key in props) { 
+                            if (key.toLowerCase().includes('id')) continue;
+                            rows += `<tr><td style="width:100px"><b>${formatTitle(key)}</b></td><td>${props[key] || "-"}</td></tr>`; 
+                        }
+                        layer.bindPopup(`<div class="popup-header">${displayTitle.toUpperCase()}</div><div class="popup-scroll"><table class="popup-table">${rows}</table></div>`);
                     }
                 });
+
                 activeLayers[layerName] = geoJsonLayer;
                 geoJsonLayer.addTo(map);
+
+                if (layerName.toLowerCase().includes('jaringan')) {
+                    geoJsonLayer.bringToFront();
+                }
+
                 updateLegend();
                 if (geoJsonLayer.getBounds().isValid()) map.flyToBounds(geoJsonLayer.getBounds(), { padding: [50, 50], duration: 1.5 });
-            });
+            }).catch(err => console.error("Gagal memuat layer WFS:", err));
         } else if (activeLayers[layerName]) {
             map.removeLayer(activeLayers[layerName]);
             delete activeLayers[layerName];
@@ -323,7 +404,7 @@
 
     function loadSidebarLayers() {
         const capabilitiesUrl = "http://103.144.231.38:8082/geoserver/geocimancis/ows?service=WFS&version=1.1.0&request=GetCapabilities";
-        const mainCategories = ["DAS dan Jaringan Sungai", "Infrastruktur", "Daerah Irigasi Pusat", "Kebencanaan", "Sumber Daya Alam"];
+        const mainCategories = ["DAS dan Jaringan Sungai", "Infrastruktur", "Daerah Irigasi Pusat", "Kebencanaan", "Aset Tanah", "Sumber Daya Alam"];
         fetch(capabilitiesUrl).then(res => res.text()).then(str => new window.DOMParser().parseFromString(str, "text/xml")).then(data => {
             const layers = data.getElementsByTagName("FeatureType");
             const menuContainer = document.getElementById('dynamic-menu');
@@ -334,12 +415,16 @@
                 const fullName = layer.getElementsByTagName("Name")[0].textContent.replace('geocimancis:', '');
                 const lowerName = fullName.toLowerCase();
                 let category = "Sumber Daya Alam";
-                if (lowerName.includes('bendung') || lowerName.includes('embung') || lowerName.includes('pengendali') || lowerName.includes('pengaman') || lowerName.includes('mata') || lowerName.includes('situ')) category = "Infrastruktur";
+                
+                if (lowerName.includes('aset_tanah')) category = "Aset Tanah";
+                else if (lowerName.includes('bendung') || lowerName.includes('embung') || lowerName.includes('pengendali') || lowerName.includes('pengaman') || lowerName.includes('mata') || lowerName.includes('situ')) category = "Infrastruktur";
                 else if (lowerName.startsWith('di_')) category = "Daerah Irigasi Pusat";
                 else if (lowerName.includes('sungai') || lowerName.includes('das')) category = "DAS dan Jaringan Sungai";
                 else if (lowerName.includes('banjir') || lowerName.includes('kekeringan') || lowerName.includes('mh') || lowerName.includes('kritis') || lowerName.includes('gerakan')) category = "Kebencanaan";
+                
                 catalog[category].push({ name: fullName });
             });
+
             for (let catName in catalog) {
                 if (catalog[catName].length === 0) continue;
                 let groupDiv = document.createElement('div');
@@ -377,14 +462,12 @@
                         if (item.name.toLowerCase().includes('mh')) mhItems.push(item);
                         else otherItems.push(item);
                     });
-
                     otherItems.forEach(item => {
                         let itemDiv = document.createElement('div');
                         itemDiv.className = 'menu-item';
                         itemDiv.innerHTML = `<label><input type="checkbox" onchange="toggleWFS(this, '${item.name}', '${catName}')">${getLayerIcon(item.name)}<span>${formatTitle(item.name)}</span></label>`;
                         contentDiv.appendChild(itemDiv);
                     });
-
                     if (mhItems.length > 0) {
                         let mhSubDiv = document.createElement('div');
                         mhSubDiv.className = 'sub-bab-container';
