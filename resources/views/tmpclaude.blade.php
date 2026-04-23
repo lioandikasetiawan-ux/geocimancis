@@ -191,46 +191,134 @@
 
         /* ===== ZOOM CONTROL ===== */
         .leaflet-control-zoom{
-            position:fixed!important;top:90px!important;right:10px!important;
-            left:auto!important;bottom:auto!important;z-index:400!important;
+            right:10px !important;
+            left:auto !important;
+            z-index:400 !important;
         }
 
-        /* ===== TOAST ===== */
-        #toast-container{
-            position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
-            z-index:10000;display:flex;flex-direction:column;gap:10px;pointer-events:none;
-        }
-        .toast{
-            background:#3498db;color:#fff;padding:12px 20px;border-radius:8px;
-            font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,.15);
-            pointer-events:auto;min-width:200px;text-align:center;
-            /* Hapus animasi slideUp untuk performa - ganti opacity sederhana */
-            animation:fadeIn .2s ease;
-        }
-        .toast.success{background:#27ae60}
-        .toast.error{background:#e74c3c}
-        .toast.warning{background:#f39c12}
-        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-
-        /* ===== SEARCH MARKER PULSE (lebih ringan) ===== */
-        @keyframes pulse{
-            0%{transform:scale(1);opacity:.7}
-            100%{transform:scale(2.5);opacity:0}
+        /* Desktop: zoom tetap fixed di posisi atas */
+        @media(min-width:769px){
+            .leaflet-control-zoom{
+                position:fixed !important;
+                top:90px !important;
+            }
         }
 
-        /* ===== RESPONSIVE ===== */
-        @media(max-width:560px){
-            .menu-item label{font-size:.73rem;padding:10px;gap:8px}
-            .menu-title{font-size:.65rem;padding:12px 14px}
-            .legend{max-width:190px;font-size:9px}
-            .legend-content{max-height:250px}
-            #toggle-sidebar{width:40px;height:40px;padding:8px;font-size:18px}
-        }
+                #toast-container{
+                    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+                    z-index:10000;display:flex;flex-direction:column;gap:10px;pointer-events:none;
+                }
+                .toast{
+                    background:#3498db;color:#fff;padding:12px 20px;border-radius:8px;
+                    font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,.15);
+                    pointer-events:auto;min-width:200px;text-align:center;
+                    animation:fadeIn .2s ease;
+                }
+                .toast.success{background:#27ae60}
+                .toast.error{background:#e74c3c}
+                .toast.warning{background:#f39c12}
+                @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
-        /* ===== SCROLLBAR ===== */
-        #sidebar::-webkit-scrollbar{width:4px}
-        #sidebar::-webkit-scrollbar-track{background:#2c3e50}
-        #sidebar::-webkit-scrollbar-thumb{background:#5d7e9a;border-radius:8px}
+                /* ===== SEARCH MARKER PULSE ===== */
+                @keyframes pulseSoft{
+                    0%{transform:scale(1);opacity:0.4}
+                    50%{transform:scale(1.4);opacity:0.2}
+                    100%{transform:scale(1);opacity:0.4}
+                }
+
+@media(max-width:768px){
+    /* Perkecil sidebar di mobile */
+    #sidebar{
+        width: 75% !important;
+        max-width: 280px !important;
+        padding: 12px 10px !important;
+    }
+    #toggle-sidebar{
+        left: min(75%, 280px) !important;
+        width:40px; height:40px; padding:8px; font-size:18px;
+    }
+    #sidebar.hidden + #toggle-sidebar{
+        left: 12px !important;
+    }
+
+    /* Header sidebar lebih kompak */
+    .sidebar-header{
+        padding: 6px 0 10px !important;
+        margin-bottom: 12px !important;
+    }
+    .sidebar-header img{ width: 26px !important; }
+    .sidebar-header h2{ font-size: 0.85rem !important; }
+
+    /* Search lebih kompak */
+    .global-search-container{ padding: 8px !important; margin-bottom: 14px !important; }
+    .global-search-box input{ font-size: .78rem !important; min-width: 0; flex: 1; }
+    .global-search-box button { 
+        padding: 6px 10px !important; 
+        font-size: 0.7rem !important; 
+        margin-left: auto;
+        flex-shrink: 0;
+    }
+    .global-search-box { 
+        gap: 6px; flex-wrap: nowrap;
+    }
+    .leaflet-bottom.leaflet-right{
+        bottom: max(12px, env(safe-area-inset-bottom, 12px)) !important;
+        right:  max(8px,  env(safe-area-inset-right,  8px))  !important;
+    }
+    .legend{
+        max-width: min(200px, 55vw);
+        font-size: 9px;
+        max-height: 42vh;
+        overflow-y: auto;
+    }
+    .legend-content{
+        max-height: calc(42vh - 40px);
+        padding: 8px 10px;
+    }
+    .leaflet-top.leaflet-right{
+        top: max(10px, env(safe-area-inset-top, 10px)) !important;
+        right: max(8px, env(safe-area-inset-right, 8px)) !important;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+    .leaflet-top.leaflet-right .leaflet-control-layers{
+        order: 1;
+        width: auto !important;
+    }
+    .leaflet-top.leaflet-right .leaflet-control-layers-list{ display: none; }
+    .leaflet-top.leaflet-right .leaflet-control-layers-expanded .leaflet-control-layers-list{ display: block; }
+    .leaflet-control-zoom{
+        position: relative !important;
+        top: auto !important;
+        right: auto !important;
+        order: 2;
+    }
+    .menu-item label{ font-size:.73rem; padding:10px; gap:8px }
+    .menu-title{ font-size:.65rem; padding:12px 14px }
+    #toast-container{ bottom: max(70px, calc(env(safe-area-inset-bottom,0px) + 70px)) }
+}
+
+                @media(max-width:400px){
+                            .legend{ max-width:min(170px, 58vw); font-size:8.5px; max-height:38vh }
+                            .legend-content{ max-height:calc(38vh - 40px) }
+                            .legend-cat-title{ font-size:9px }
+                            .legend-item{ font-size:9px }
+                        }
+
+                        @media(max-height:500px) and (max-width:900px){
+                            .legend{ max-height:55vh }
+                            .legend-content{ max-height:calc(55vh - 40px) }
+                            .leaflet-bottom.leaflet-right{
+                                bottom: max(6px, env(safe-area-inset-bottom, 6px)) !important;
+                            }
+                            #toast-container{ bottom: max(50px, calc(env(safe-area-inset-bottom,0px) + 50px)) }
+                        }
+
+                /* ===== SCROLLBAR ===== */
+                #sidebar::-webkit-scrollbar{width:4px}
+                #sidebar::-webkit-scrollbar-track{background:#2c3e50}
+                #sidebar::-webkit-scrollbar-thumb{background:#5d7e9a;border-radius:8px}
     </style>
 </head>
 <body>
@@ -256,31 +344,26 @@
 <button id="toggle-sidebar"><i class="fas fa-chevron-left"></i></button>
 <div id="map"></div>
 
-<!-- Leaflet JS dimuat async -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 <script>
-// Tunggu Leaflet selesai load sebelum init
 document.querySelector('script[src*="leaflet"]').addEventListener('load', initApp);
 
 function initApp() {
-    // ===== MAP INIT =====
     var map = L.map('map', {
         center:[-6.722,108.556], zoom:11,
         zoomAnimation:true, markerZoomAnimation:true,
         zoomSnap:.5, zoomDelta:.5,
         attributionControl:false, zoomControl:false,
-        // Optimalkan tile loading di mobile
-        preferCanvas:true  // Render dengan Canvas, lebih ringan dari SVG untuk banyak feature
+        preferCanvas:true  
     });
 
     L.control.zoom({position:'topright'}).addTo(map);
 
-    // Tile dengan maxNativeZoom agar tidak download tile resolusi berlebihan
     var googleSat = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{
         maxZoom:20, maxNativeZoom:18,
         subdomains:['mt0','mt1','mt2','mt3'],
-        keepBuffer:1,       // Kurangi buffer tile agar hemat memori
-        updateWhenIdle:true // Hanya update tile saat panning berhenti
+        keepBuffer:1,      
+        updateWhenIdle:true 
     }).addTo(map);
 
     var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
@@ -292,18 +375,15 @@ function initApp() {
     var baseMaps = {"Google Satellite":googleSat,"OpenStreetMap":osm};
     L.control.layers(baseMaps, null, {position:'topright'}).addTo(map);
 
-    // ===== STATE =====
+   
     var activeLayers = {};
     var layerInfoForLegend = {};
     var searchMarker = null;
     var allLocationsCache = [];
     var availableLayersList = [];
     var preloadCompleted = false;
-    // Cache WFS yang sudah pernah diload agar tidak fetch ulang
     var wfsDataCache = {};
 
-    // ===== TOAST =====
-    // Singleton container
     var toastContainer = document.createElement('div');
     toastContainer.id = 'toast-container';
     document.body.appendChild(toastContainer);
@@ -537,8 +617,6 @@ function initApp() {
         
         var typeStr = String(saluranType).toLowerCase().trim();
         
-        // DEBUG: Lihat di console apa yang terbaca
-        console.log('Layer:', layerName, 'Tipe saluran:', typeStr, 'Properties:', Object.keys(props));
         
         if(typeStr.includes('induk')) { 
             color = classificationColors['saluran induk'];   
@@ -563,8 +641,8 @@ function initApp() {
             color = classificationColors['saluran suplesi'];  
         }
         else if(typeStr.includes('induk') === false && typeStr !== '') {
-            // Jika ada nilai tapi tidak dikenali, tampilkan warning di console
-            console.warn('Tipe saluran tidak dikenali:', typeStr);
+            // Jika ada kata selain "induk" tapi tidak spesifik, beri warna default jaringan
+           color='#a0c4c9'; 
         }
     }
         if(ll.includes('sempadan')){
@@ -617,85 +695,100 @@ function initApp() {
         if(checkbox.checked){
             loadWFSLayer(layerName, category, subCategory);
         } else if(activeLayers[layerName]){
-            map.removeLayer(activeLayers[layerName]);
+            var lyr = activeLayers[layerName];
+            if(lyr.clearLayers) lyr.clearLayers(); // bebaskan semua child dari memori
+            map.removeLayer(lyr);
             delete activeLayers[layerName];
             delete layerInfoForLegend[layerName];
+            delete wfsDataCache[layerName];
             updateLegend();
         }
     }
 
-    function loadWFSLayer(layerName, category, subCategory) {
-        // Jika sudah di-cache, langsung render ulang tanpa fetch
-        if(wfsDataCache[layerName]){
-            renderWFSData(wfsDataCache[layerName], layerName, category, subCategory);
-            return;
-        }
-        var url = "https://geo.sisdacimancis.id/geoserver/geocimancis/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=geocimancis:"+layerName+"&outputFormat=application/json&srsName=EPSG:4326";
-        fetch(url)
-            .then(function(res){ return res.json(); })
-            .then(function(data){
-                if(!data.features||data.features.length===0) return;
-                wfsDataCache[layerName] = data; // simpan ke cache
-                renderWFSData(data, layerName, category, subCategory);
-            })
-            .catch(function(err){ console.error("Gagal memuat WFS:", layerName, err); });
+function loadWFSLayer(layerName, category, subCategory) {
+    if(wfsDataCache[layerName]){
+        renderWFSData(wfsDataCache[layerName], layerName, category, subCategory);
+        return;
     }
+    var url = "https://geo.sisdacimancis.id/geoserver/geocimancis/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=geocimancis:"+layerName+"&outputFormat=application/json&srsName=EPSG:4326&maxFeatures=1000";
+    fetch(url)
+        .then(function(res){ return res.json(); })
+        .then(function(data){
+            if(!data.features||data.features.length===0) return;
+            renderWFSData(data, layerName, category, subCategory); // ? ini yang hilang
+        })
+        .catch(function(err){ console.error("Gagal memuat WFS:", layerName, err); });
+}
+function renderWFSData(data, layerName, category, subCategory) {
+    var info = {category:category, subCategory:subCategory};
+    var iconPath = getLayerIconPath(layerName);
+    if(iconPath){ info.type='icon'; info.icon=iconPath; }
+    else {
+        var firstStyle = getFeatureStyle(data.features[0]||{}, layerName);
+        info.type='single'; info.color=firstStyle.color;
+        var classes = {};
+        var isJaringan = layerName.toLowerCase().includes('jaringan')||layerName.toLowerCase().includes('saluran');
 
-    function renderWFSData(data, layerName, category, subCategory) {
-        var info = {category:category, subCategory:subCategory};
-        var iconPath = getLayerIconPath(layerName);
-        if(iconPath){ info.type='icon'; info.icon=iconPath; }
-        else {
-            var firstStyle = getFeatureStyle(data.features[0]||{}, layerName);
-            info.type='single'; info.color=firstStyle.color;
-            var classes = {};
-            var isJaringan = layerName.toLowerCase().includes('jaringan')||layerName.toLowerCase().includes('saluran');
-            data.features.forEach(function(f){
-                for(var prop in f.properties){
-                    var rawVal = String(f.properties[prop]);
-                    var cleanVal = rawVal.toLowerCase().replace(/,/g,'').replace(/\s+/g,' ').replace(/\(.*\)/g,'').trim();
-                    if(isJaringan){
-                        if(cleanVal.includes('induk'))   classes['saluran induk']  ={color:classificationColors['saluran induk'],  label:'Saluran Induk'};
-                        else if(cleanVal.includes('primer'))  classes['saluran primer'] ={color:classificationColors['saluran primer'], label:'Saluran Primer'};
-                        else if(cleanVal.includes('sekunder'))classes['saluran sekunder']={color:classificationColors['saluran sekunder'],label:'Saluran Sekunder'};
-                        else if(cleanVal.includes('tersier')) classes['saluran tersier'] ={color:classificationColors['saluran tersier'], label:'Saluran Tersier'};
-                        else if(classificationColors[cleanVal]) classes[cleanVal]={color:classificationColors[cleanVal],label:rawVal};
-                    } else {
-                        if(classificationColors[cleanVal]) classes[cleanVal]={color:classificationColors[cleanVal],label:rawVal};
-                    }
+        // FIX 2: Cukup sample 200 feature untuk deteksi kelas legenda
+        var sampleFeatures = data.features.slice(0, 200);
+        sampleFeatures.forEach(function(f){
+            for(var prop in f.properties){
+                var rawVal = String(f.properties[prop]);
+                var cleanVal = rawVal.toLowerCase().replace(/,/g,'').replace(/\s+/g,' ').replace(/\(.*\)/g,'').trim();
+                if(isJaringan){
+                    if(cleanVal.includes('induk'))        classes['saluran induk']   ={color:classificationColors['saluran induk'],  label:'Saluran Induk'};
+                    else if(cleanVal.includes('primer'))  classes['saluran primer']  ={color:classificationColors['saluran primer'], label:'Saluran Primer'};
+                    else if(cleanVal.includes('sekunder'))classes['saluran sekunder']={color:classificationColors['saluran sekunder'],label:'Saluran Sekunder'};
+                    else if(cleanVal.includes('tersier')) classes['saluran tersier'] ={color:classificationColors['saluran tersier'], label:'Saluran Tersier'};
+                    else if(classificationColors[cleanVal]) classes[cleanVal]={color:classificationColors[cleanVal],label:rawVal};
+                } else {
+                    if(classificationColors[cleanVal]) classes[cleanVal]={color:classificationColors[cleanVal],label:rawVal};
                 }
-            });
-            if(Object.keys(classes).length>1){ info.type='classified'; info.classes=Object.values(classes); }
-        }
-        layerInfoForLegend[layerName] = info;
+            }
+        });
+        if(Object.keys(classes).length>1){ info.type='classified'; info.classes=Object.values(classes); }
+    }
+    layerInfoForLegend[layerName] = info;
 
-        var geoJsonLayer = L.geoJson(data, {
-            // preferCanvas diset di map init, tidak perlu per-layer
-            style:function(f){ return getFeatureStyle(f,layerName); },
-            pointToLayer:function(f,latlng){
-                return L.marker(latlng,{icon:createMarkerIcon(getFeatureStyle(f,layerName).color, layerName)});
-            },
-            onEachFeature:function(f,layer){
+    var geoJsonLayer = L.geoJson(data, {
+        style: function(f){ return getFeatureStyle(f, layerName); },
+        pointToLayer: function(f, latlng){
+            return L.marker(latlng, {icon:createMarkerIcon(getFeatureStyle(f,layerName).color, layerName)});
+        },
+        // FIX 3: Lazy popup — dibuat hanya saat diklik, bukan saat render
+        onEachFeature: function(f, layer){
+            layer.on('click', function(){
+                if(layer.getPopup()) return;
                 var props = f.properties;
                 var displayTitle = props.Nama||props.nama||props.N_Aset||props.n_aset;
-                if(!displayTitle||displayTitle==="-"||displayTitle==="0"){
+                if(!displayTitle||displayTitle==="-"||displayTitle==="0")
                     displayTitle = props.saluran||props.Saluran||formatTitle(layerName);
-                }
                 var rows = "";
                 for(var key in props){
                     if(key.toLowerCase().includes('id')) continue;
                     rows += '<tr><td style="width:100px"><b>'+formatTitle(key)+'</b></td><td>'+(props[key]||"-")+'</td></tr>';
                 }
-                layer.bindPopup('<div class="popup-header">'+displayTitle.toUpperCase()+'</div><div class="popup-scroll"><table class="popup-table">'+rows+'</table></div>');
-            }
-        });
-        activeLayers[layerName] = geoJsonLayer;
-        geoJsonLayer.addTo(map);
-        if(layerName.toLowerCase().includes('jaringan')) geoJsonLayer.bringToFront();
-        updateLegend();
-        if(geoJsonLayer.getBounds().isValid())
-            map.flyToBounds(geoJsonLayer.getBounds(),{padding:[50,50],duration:1.5});
-    }
+                layer.bindPopup(
+                    '<div class="popup-header">'+String(displayTitle).toUpperCase()+'</div>'
+                    +'<div class="popup-scroll"><table class="popup-table">'+rows+'</table></div>'
+                ).openPopup();
+            });
+        }
+    });
+
+    activeLayers[layerName] = geoJsonLayer;
+    geoJsonLayer.addTo(map);
+
+    // FIX 4: Hapus raw GeoJSON dari cache setelah Leaflet selesai render
+    delete wfsDataCache[layerName];
+
+    if(layerName.toLowerCase().includes('jaringan')) geoJsonLayer.bringToFront();
+    updateLegend();
+
+    // FIX 1: fitBounds tanpa animasi, hanya saat layer pertama
+    if(Object.keys(activeLayers).length === 1 && geoJsonLayer.getBounds().isValid())
+        map.fitBounds(geoJsonLayer.getBounds(), {padding:[40,40], animate:false});
+}
 
     // ===== PRELOAD DATA (throttled agar tidak banjir request) =====
     function preloadAllData(layerNames) {
@@ -755,23 +848,30 @@ function initApp() {
     var lokasiKritisSimona = null;
     var lokasiKritisSimonaMarkers = [];
 
-    function getColorByTingkatKerusakan(t) {
-        if(!t) return '#3498db';
-        t = t.toLowerCase();
-        if(t.includes('berat')) return '#e74c3c';
-        if(t.includes('sedang')) return '#f1c40f';
-        return '#3498db';
+    function getColorByTingkatKerusakan(tingkat) {
+        if (!tingkat) return '#15ff00';
+        tingkat = tingkat.toLowerCase();
+        if (tingkat.includes('berat')) return '#f91900';
+        if (tingkat.includes('sedang')) return '#f39108';
+        if (tingkat.includes('ringan')) return '#e1f03f';
+         if (tingkat.includes('permanen')) return '#15ff00';
+        return '#e1f03f';
     }
 
-    function getSimonaIcon(tk) {
-        var color = getColorByTingkatKerusakan(tk);
-        var oc = color==='#e74c3c'?'rgba(231,76,60,.5)':(color==='#f1c40f'?'rgba(241,196,15,.5)':'rgba(52,152,219,.5)');
-        return L.divIcon({
-            html:'<div style="position:relative"><div style="width:14px;height:14px;background:'+color+';border:2px solid #fff;border-radius:50%;box-shadow:0 0 4px rgba(0,0,0,.3);z-index:2"></div><div style="position:absolute;top:-2px;left:-2px;width:18px;height:18px;background:'+oc+';border-radius:50%;animation:pulse 1.5s infinite;z-index:1"></div></div>',
-            className:'lokasi-kritis-simona-marker',
-            iconSize:[14,14], iconAnchor:[7,7], popupAnchor:[0,-7]
-        });
-    }
+function getSimonaIcon(tk) {
+    var color = getColorByTingkatKerusakan(tk);
+    
+    return L.divIcon({
+        html: '<div style="position:relative">' +
+              '<div style="width:16px;height:16px;background:'+color+';border:2.5px solid #fff;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,.3);z-index:2"></div>' +
+              '<div style="position:absolute;top:-2px;left:-2px;width:20px;height:20px;background:'+color+';border-radius:50%;opacity:0.4;animation:pulseSoft 1.5s ease-out infinite;z-index:1"></div>' +
+              '</div>',
+        className: 'lokasi-kritis-simona-marker',
+        iconSize: [16, 16], 
+        iconAnchor: [8, 8], 
+        popupAnchor: [0, -8]
+    });
+}
 
     function loadLokasiKritisSimona() {
         showToast('Memuat data Lokasi Kritis SIMONA...','info');
@@ -819,9 +919,10 @@ function initApp() {
                     layerInfoForLegend['lokasi_kritis_simona']={
                         category:'LOKASI KRITIS SIMONA',type:'classified',
                         classes:[
-                            {color:'#e74c3c',label:'Tingkat Kerusakan Berat'},
-                            {color:'#f1c40f',label:'Tingkat Kerusakan Sedang'},
-                            {color:'#3498db',label:'Tingkat Kerusakan Ringan'}
+                            { color: '#f91900', label: 'Tingkat Kerusakan Berat' },
+                            { color: '#f39108', label: 'Tingkat Kerusakan Sedang' },
+                            { color: '#e1f03f', label: 'Tingkat Kerusakan Ringan' },
+                            { color: '#15ff00', label: 'Penanganan Permanen' }
                         ]
                     };
                     updateLegend();
@@ -894,7 +995,9 @@ function initApp() {
                     allLayerNames.push(name);
                 });
 
-                preloadAllData(allLayerNames);
+                // preloadAllData(allLayerNames);
+                var si = document.getElementById('global-search-input');
+                if(si) si.placeholder = 'Cari layer...';
 
                 for(var catName in catalog){
                     if(catalog[catName].length===0) continue;
